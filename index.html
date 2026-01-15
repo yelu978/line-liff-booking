@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LIFF 除錯中</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+    #console { 
+      background: #333; color: #0f0; padding: 15px; 
+      border-radius: 5px; font-family: monospace; 
+      font-size: 12px; min-height: 100px; white-space: pre-wrap;
+    }
+    .error { color: #ff5555; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h3>LIFF 狀態偵測</h3>
+  <div id="console">正在載入 LIFF SDK...</div>
+
+  <script>
+    const logElement = document.getElementById('console');
+    
+    // 自定義 Log 函數，直接顯示在螢幕上
+    function log(msg, isError = false) {
+      const timestamp = new Date().toLocaleTimeString();
+      const line = isError ? `<span class="error">[ERROR] ${msg}</span>` : `[${timestamp}] ${msg}`;
+      logElement.innerHTML += "<br>" + line;
+      console.log(msg);
+    }
+
+    async function startLiff() {
+      try {
+        log("開始初始化...");
+        log("當前網址：" + window.location.href);
+        log("環境檢查：" + navigator.userAgent);
+        // *** 請確保這裡的 ID 是正確的 ***
+        log("嘗試連線至 LINE 伺服器...");
+        // 設定 5 秒後如果還沒動靜就報錯
+        const timeout = setTimeout(() => log("連線逾時，請檢查網路或 ID", true), 5000);
+
+        await liff.init({ liffId: "2008902381-sUXBqBn1" }); 
+        log("LIFF 初始化完成！");
+
+        if (!liff.isLoggedIn()) {
+          log("偵測到未登入，準備呼叫 liff.login()...");
+          liff.login();
+        } else {
+          log("使用者已登入！");
+          const profile = await liff.getProfile();
+          log("目前使用者：" + profile.displayName);
+          log("--- 初始化成功，可以開始操作 ---");
+        }
+      } catch (err) {
+        log("發生錯誤：" + err.message, true);
+        log("錯誤代碼：" + err.code, true);
+      }
+    }
+
+    window.onload = startLiff;
+  </script>
+</body>
+</html>
