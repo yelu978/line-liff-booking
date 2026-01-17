@@ -323,11 +323,7 @@ const apiUrl =	"https://script.google.com/macros/s/AKfycbw8HzCZCGtJTmXnJ6f0l3UUb
       goToStep(5); // Loading
       try {
     const response = await fetch(apiUrl, {
-      method: 'POST',
-	  mode: 'cors',	
-	  headers: {
-      	'Content-Type': 'text/plain;charset=utf-8'
-      },
+      method: 'POST',	 
       body: JSON.stringify({
         action: 'bookCourse',
         doctorName: selectedDoctor.name,
