@@ -172,7 +172,7 @@
     let selectedCourse = null;
     let selectedDate = null;
     let currentMonth = new Date();
-const apiUrl =	"https://script.google.com/macros/s/AKfycby8kOj7ne8HBxqJpfXqve22FoSd1fNr6_YMmf7iVgfFtIXkmshx8tPNn3IG-NUwwHpU/exec";
+const apiUrl =	"https://script.google.com/macros/s/AKfycbw8HzCZCGtJTmXnJ6f0l3UUbqlEQulM11949WLf7QfhZN-d8QTrPAkL7-eOxuU_cNW0/exec";
     
     // 初始化
     window.onload = function() {
@@ -324,7 +324,10 @@ const apiUrl =	"https://script.google.com/macros/s/AKfycby8kOj7ne8HBxqJpfXqve22F
       try {
     const response = await fetch(apiUrl, {
       method: 'POST',
-	  mode: 'cors',	  
+	  mode: 'cors',	
+	  headers: {
+      	'Content-Type': 'text/plain;charset=utf-8'
+      },
       body: JSON.stringify({
         action: 'bookCourse',
         doctorName: selectedDoctor.name,
