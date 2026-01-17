@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>預約上課</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #333; text-align: center; margin-bottom: 10px; font-size: 28px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+    
+    /* 步驟指示器 */
+    .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; gap: 10px; }
+    .step {
+      width: 30px; height: 30px; border-radius: 50%; background: #e0e0e0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: bold; color: #999;
+    }
+    .step.active { background: #667eea; color: white; }
+    
+    /* 區塊顯示控制 */
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 按鈕樣式 */
+    .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+    .btn {
+      padding: 15px 20px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; font-size: 16px; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      width: 100%; margin-bottom: 10px;
+      /* 禁止文字選取，優化手機體驗 */
+      user-select: none; -webkit-user-select: none;
+    }
+    .btn:active { transform: scale(0.98); }
+    .back-btn { background: #6c757d; margin-top: 15px; }
+
+    /* 日曆樣式 */
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .calendar-nav { background: #f5f5f5; border: none; padding: 8px 15px; border-radius: 8px; font-size: 18px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .calendar-day-header { text-align: center; padding: 10px; font-weight: bold; color: #666; font-size: 14px; }
+    .calendar-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; cursor: pointer; font-size: 14px;
+    }
+    .calendar-day:not(.disabled) { background: #f8f9fa; }
+    .calendar-day:not(.disabled):active { background: #e2e8f0; }
+    .calendar-day.disabled { color: #ccc; cursor: not-allowed; }
+    .calendar-day.selected { background: #667eea; color: white; }
+
+    /* 時段按鈕 */
+    .time-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }
+    .time-slot {
+      padding: 12px; background: white; border: 2px solid #667eea;
+      border-radius: 8px; color: #667eea; cursor: pointer;
+      text-align: center; font-size: 16px;
+      /* 關鍵：解決手機觸控問題 */
+      touch-action: manipulation; 
+    }
+    .time-slot:active { background: #667eea; color: white; }
+    
+    /* 錯誤訊息 */
+    .error-message {
+      background: #fff5f5; color: #c53030; padding: 20px;
+      border-radius: 8px; text-align: center; border: 2px solid #feb2b2;
+    }
+    .retry-btn { background: #718096; margin-top: 15px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: #667eea; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📚 預約上課</h1>
+    <p class="subtitle">請選擇醫師和課程進行預約</p>
+    
+    <div class="step-indicator">
+      <div class="step active" id="step1">1</div>
+      <div class="step" id="step2">2</div>
+      <div class="step" id="step3">3</div>
+      <div class="step" id="step4">4</div>
+    </div>
+    
+    <div class="section active" id="section-doctor">
+      <h2>選擇醫師</h2>
+      <div class="btn-grid" id="doctorList">
+        <div style="grid-column: 1/-1; text-align: center;">載入中...</div>
+      </div>
+    </div>
+    
+    <div class="section" id="section-course">
+      <h2>選擇課程</h2>
+      <div id="courseList"></div>
+      <button class="btn back-btn" onclick="goToStep(1)">← 返回</button>
+    </div>
+    
+    <div class="section" id="section-date">
+      <h2>選擇日期</h2>
+      <div class="calendar-header">
+        <button class="calendar-nav" onclick="changeMonth(-1)">◀</button>
+        <span id="currentMonth" style="font-weight: bold; font-size: 18px;"></span>
+        <button class="calendar-nav" onclick="changeMonth(1)">▶</button>
+      </div>
+      <div class="calendar-grid">
+        <div class="calendar-day-header">日</div>
+        <div class="calendar-day-header">一</div>
+        <div class="calendar-day-header">二</div>
+        <div class="calendar-day-header">三</div>
+        <div class="calendar-day-header">四</div>
+        <div class="calendar-day-header">五</div>
+        <div class="calendar-day-header">六</div>
+      </div>
+      <div class="calendar-grid" id="calendarDays"></div>
+      <button class="btn back-btn" onclick="goToStep(2)">← 返回</button>
+    </div>
+    
+    <div class="section" id="section-time">
+      <h2>選擇時段</h2>
+      <p style="color: #666; margin-bottom: 10px;">已選日期: <span id="selectedDateDisplay"></span></p>
+      <div class="time-slots" id="timeSlots"></div>
+      <button class="btn back-btn" onclick="goToStep(3)">← 返回</button>
+    </div>
+    
+    <div class="section" id="section-loading">
+      <div class="loading">
+        <div style="font-size: 40px; margin-bottom: 15px;">⏳</div>
+        <div>處理中，請稍候...</div>
+      </div>
+    </div>
+    
+    <div class="section" id="section-success">
+      <div style="text-align: center; padding: 20px;">
+        <div style="font-size: 60px; margin-bottom: 20px;">✅</div>
+        <h3 style="color: #28a745; margin-bottom: 10px;">預約成功!</h3>
+        <div id="successDetail" style="color: #666; white-space: pre-line; line-height: 1.6;"></div>
+        <p style="color: #999; font-size: 12px; margin-top: 20px;">視窗將在 3 秒後自動關閉</p>
+        <button class="btn" onclick="window.close()">立即關閉</button>
+      </div>
+    </div>
+
+    <div class="section" id="section-error">
+      <div class="error-message">
+        <div style="font-size: 40px; margin-bottom: 10px;">❌</div>
+        <h3>預約失敗</h3>
+        <p id="errorDetail" style="margin-top: 10px; white-space: pre-wrap; font-size: 14px;"></p>
+        <button class="btn retry-btn" onclick="location.reload()">重新開始</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let doctors = [];
+    let selectedDoctor = null;
+    let selectedCourse = null;
+    let selectedDate = null;
+    let currentMonth = new Date();
+const apiUrl =	"https://script.google.com/macros/s/AKfycby8kOj7ne8HBxqJpfXqve22FoSd1fNr6_YMmf7iVgfFtIXkmshx8tPNn3IG-NUwwHpU/exec";
+    
+    // 初始化
+    window.onload = function() {
+     renderDoctorList();
+    };
+    
+    async function renderDoctorList() {
+	const response = await fetch(`${apiUrl}?action=getDoctors`);
+        const doctors = await response.json();
+      const list = document.getElementById('doctorList');
+      list.innerHTML = '';
+      if(doctors.length === 0) {
+        list.innerHTML = '<div style="grid-column:1/-1;text-align:center;">無醫師資料</div>';
+        return;
+      }
+      doctors.forEach(doctor => {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = doctor.name;
+        // 使用 onclick 確保手機相容性
+        btn.onclick = function() { selectDoctor(doctor); };
+        list.appendChild(btn);
+      });
+    }
+    
+    function selectDoctor(doctor) {
+      selectedDoctor = doctor;
+      renderCourseList();
+      goToStep(2);
+    }
+    
+    function renderCourseList() {
+      const list = document.getElementById('courseList');
+      list.innerHTML = '';
+      
+      const courses = [];
+      if (selectedDoctor.course1) courses.push(selectedDoctor.course1);
+      if (selectedDoctor.course2) courses.push(selectedDoctor.course2);
+      
+      if(courses.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:20px;">此醫師暫無課程</div>';
+      }
+
+      courses.forEach(course => {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = course;
+        btn.onclick = function() { selectCourse(course); };
+        list.appendChild(btn);
+      });
+    }
+    
+    function selectCourse(course) {
+      selectedCourse = course;
+      renderCalendar();
+      goToStep(3);
+    }
+    
+    function renderCalendar() {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      document.getElementById('currentMonth').textContent = `${year}年 ${month + 1}月`;
+      
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const container = document.getElementById('calendarDays');
+      container.innerHTML = '';
+      
+      for (let i = 0; i < firstDay; i++) {
+        container.appendChild(document.createElement('div'));
+      }
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.textContent = day;
+        
+        const date = new Date(year, month, day);
+        const dayOfWeek = date.getDay();
+        
+        if (date < today || dayOfWeek === 0 || dayOfWeek === 6) {
+          dayElement.classList.add('disabled');
+        } else {
+          dayElement.onclick = function() { selectDate(date); };
+        }
+        container.appendChild(dayElement);
+      }
+    }
+    
+    function changeMonth(delta) {
+      currentMonth.setMonth(currentMonth.getMonth() + delta);
+      renderCalendar();
+    }
+    
+    function selectDate(date) {
+      selectedDate = date;
+      document.getElementById('selectedDateDisplay').textContent = 
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      goToStep(4);
+      loadTimeSlots();
+    }
+    
+    // === 關鍵修正：時段載入與點擊 ===
+    async function loadTimeSlots() {
+      const container = document.getElementById('timeSlots');
+      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">載入時段中...</div>';
+      
+    try {
+    // 2. 使用 fetch 取代 google.script.run
+    const response = await fetch(`${apiUrl}?action=getAvailableSlots&date=${selectedDate.toISOString()}`);
+    const slots = await response.json();
+
+    // --- 以下邏輯與你原本的基本相同 ---
+    container.innerHTML = '';
+    if (!slots || slots.length === 0) {
+      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #999;">本日已無時段</div>';
+      return;
+    }
+
+    slots.forEach(function(slot) {
+      const btn = document.createElement('button');
+      btn.className = 'time-slot';
+      btn.textContent = slot.display;
+      btn.type = 'button';
+
+      btn.onclick = function() {
+        this.style.backgroundColor = '#667eea';
+        this.style.color = 'white';
+        this.textContent = '預約中...';
+        this.disabled = true;
+
+        // 呼叫預約函式 (下方會說明如何調整)
+        confirmBooking(slot.start, slot.end);
+      };
+      container.appendChild(btn);
+    });
+    // ----------------------------
+
+  } catch (error) {
+    showError('載入時段失敗: ' + error);
+  }
+    }
+    
+    async function confirmBooking(start, end) {
+      goToStep(5); // Loading
+      try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'bookCourse',
+        doctorName: selectedDoctor.name,
+        courseName: selectedCourse,
+        startTime: start,
+        endTime: end
+      })
+    });
+    const result = await response.json();
+    if (result.success) alert('預約成功！');
+  } catch (error) {
+    alert('預約失敗：' + error);
+  }
+     
+    }
+    
+    function showError(msg) {
+      document.getElementById('errorDetail').textContent = msg;
+      goToStep(7); // Error section
+    }
+    
+    function goToStep(step) {
+      // 隱藏所有 section
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      
+      // 顯示目標 section (陣列對應: doctor, course, date, time, loading, success, error)
+      const sections = ['doctor', 'course', 'date', 'time', 'loading', 'success', 'error'];
+      const targetId = 'section-' + sections[step - 1];
+      const targetEl = document.getElementById(targetId);
+      
+      if (targetEl) {
+        targetEl.classList.add('active');
+        window.scrollTo(0, 0);
+      }
+      
+      // 更新上方步驟球 (只顯示前4步)
+      if (step <= 4) {
+        for (let i = 1; i <= step; i++) {
+          document.getElementById('step' + i).classList.add('active');
+        }
+      }
+    }
+  </script>
+</body>
+</html>
