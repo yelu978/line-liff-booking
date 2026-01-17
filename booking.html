@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>預約上課</title>
+  <title>預約上課1</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -324,6 +324,7 @@ const apiUrl =	"https://script.google.com/macros/s/AKfycby8kOj7ne8HBxqJpfXqve22F
       try {
     const response = await fetch(apiUrl, {
       method: 'POST',
+	  mode: 'cors',
       body: JSON.stringify({
         action: 'bookCourse',
         doctorName: selectedDoctor.name,
